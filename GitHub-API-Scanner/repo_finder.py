@@ -2,6 +2,7 @@ from github import RateLimitExceededException
 from typing import List, Dict, Any
 import time
 import logging
+from datetime import datetime, timedelta
 from config import SearchConfig, SortOrder
 from github_api import GitHubAPIWrapper
 from repo_analyzer import RepoAnalyzer
@@ -66,15 +67,36 @@ class RepoCriteria:
             logger.info(f"  ├─ {repo.name}: Skip - Missing required topics")
             return False
 
-        if self.config.license and repo.license.spdx_id != self.config.license:
-            logger.info(f"  ├─ {repo.name}: Skip - Wrong license")
-            return False
-
         if self.config.is_public is not None and repo.private != (not self.config.is_public):
             logger.info(f"  ├─ {repo.name}: Skip - Wrong visibility")
             return False
 
+        consistent_contributors = self.get_consistent_contributors(repo)
+        if not consistent_contributors:
+            logger.info(f"  ├─ {repo.name}: Skip - No consistent contributors")
+            return False
+
         return True
+
+    def get_consistent_contributors(self, repo) -> List[Dict[str, Any]]:
+        consistent_contributors = []
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=730)  # 2 years
+
+        for contributor in repo.get_contributors():
+            commits = repo.get_commits(author=contributor, since=start_date, until=end_date)
+            commit_months = set()
+            for commit in commits:
+                commit_months.add((commit.commit.author.date.year, commit.commit.author.date.month))
+            
+            if len(commit_months) >= 17:  # At least 70% of 24 months
+                consistent_contributors.append({
+                    'login': contributor.login,
+                    'contributions': contributor.contributions,
+                    'active_months': len(commit_months)
+                })
+
+        return consistent_contributors
 
 class RepoFinder:
     def __init__(self, api_wrapper: GitHubAPIWrapper, criteria: RepoCriteria, config: SearchConfig):
@@ -83,9 +105,9 @@ class RepoFinder:
         self.config = config
 
     def find_repos(self) -> List[Dict[str, Any]]:
+        all_repos = []
         matching_repos = []
         repo_count = 0
-
         logger.info("Searching for repositories:")
         logger.info(f"  Languages: {', '.join([lang.value for lang in self.config.included_languages])}")
         logger.info(f"  Min percentage: {self.config.repo_config.min_language_percentage}%")
@@ -94,6 +116,7 @@ class RepoFinder:
         logger.info(f"  Max repos: {self.config.repo_config.max_repos}")
         logger.info(f"  Active within: {self.config.repo_config.recent_days} days")
         logger.info(f"  Sort by: {self.config.sort_by.value} ({self.config.sort_order.value}ending)")
+        logger.info("  Consistent contributors: Active in at least 70% of months over past 2 years")
         if self.config.excluded_repos:
             logger.info(f"  Excluded repos: {', '.join(self.config.excluded_repos)}")
 
@@ -103,10 +126,17 @@ class RepoFinder:
                     logger.info(f"Max repos ({self.config.repo_config.max_repos}) reached. Stopping.")
                     break
 
-                if self.criteria.meets_criteria(repo):
-                    matching_repos.append(self.create_repo_dict(repo))
-                    repo_count += 1
-                    logger.info(f"  └─ {repo.name}: Added - Total: {repo_count}")
+                repo_dict = self.create_repo_dict(repo)
+                meets_criteria = self.criteria.meets_criteria(repo)
+                repo_dict['meets_criteria'] = meets_criteria
+
+                all_repos.append(repo_dict)
+                if meets_criteria:
+                    matching_repos.append(repo_dict)
+
+                repo_count += 1
+                logger.info(f"  {'└─' if meets_criteria else '├─'} {repo.name}: {'Meets criteria' if meets_criteria else 'Does not meet criteria'} - Total: {repo_count}")
+                self.print_repo_details(repo_dict)
 
             except RateLimitExceededException:
                 self.handle_rate_limit()
@@ -114,20 +144,50 @@ class RepoFinder:
                 logger.error(f"  ├─ {repo.name}: Error - {str(e)}")
 
         # Sort the results
-        matching_repos.sort(
+        all_repos.sort(
             key=lambda x: x[self.config.sort_by.value],
             reverse=(self.config.sort_order == SortOrder.DESCENDING)
         )
 
-        logger.info(f"Search complete. Found {len(matching_repos)} repos.")
-        return matching_repos
+        logger.info(f"Search complete. Found {len(all_repos)} total repos, {len(matching_repos)} meeting all criteria.")
+        return all_repos
+
+    def print_repo_details(self, repo: Dict[str, Any]):
+        logger.info(f"\nDetailed information for {repo['name']}:")
+        logger.info(f"  URL: {repo['url']}")
+        logger.info(f"  Meets all criteria: {'Yes' if repo['meets_criteria'] else 'No'}")
+        logger.info(f"  Stars: {repo['stars']}, Forks: {repo['forks']}")
+        logger.info(f"  Created: {repo['created']}, Last pushed: {repo['pushed']}")
+        logger.info(f"  Size: {repo['size']} KB")
+        logger.info(f"  Topics: {', '.join(repo['topics'])}")
+        logger.info(f"  Public: {repo['is_public']}")
+        
+        logger.info("  Language Percentages:")
+        for lang, percentage in repo['language_percentages'].items():
+            logger.info(f"    {lang}: {percentage:.2f}%")
+        
+        logger.info("  Contributors:")
+        for contributor in repo['contributors']:
+            logger.info(f"    {contributor['login']}: {contributor['contributions']} contributions")
+        
+        logger.info("  Consistent Contributors:")
+        for contributor in repo['consistent_contributors']:
+            logger.info(f"    {contributor['login']}: Active for {contributor['active_months']} months")
+        
+        logger.info("  Recent Commits:")
+        for commit in repo['commit_history'][:10]:  # Show only the 10 most recent commits
+            logger.info(f"    {commit['date']}: {commit['message'][:50]}... by {commit['author']}")
+            logger.info(f"      Additions: {commit['additions']}, Deletions: {commit['deletions']}")
 
     def create_repo_dict(self, repo) -> Dict[str, Any]:
+        consistent_contributors = self.criteria.get_consistent_contributors(repo)
+        commit_history = self.get_detailed_commit_history(repo)
         return {
             'name': repo.name,
             'url': repo.html_url,
             'language_percentages': RepoAnalyzer.get_language_percentages(repo),
-            'contributors': [{'login': c.login, 'contributions': c.contributions} for c in repo.get_contributors()],
+            'contributors': self.get_detailed_contributors(repo),
+            'consistent_contributors': consistent_contributors,
             'stars': repo.stargazers_count,
             'forks': repo.forks_count,
             'updated': repo.updated_at,
@@ -136,11 +196,60 @@ class RepoFinder:
             'size': repo.size,
             'default_branch': repo.default_branch,
             'topics': repo.get_topics(),
-            'license': repo.license.spdx_id if repo.license else None,
             'is_public': not repo.private,
-            'commit_history': RepoAnalyzer.get_commit_history(repo),
+            'commit_history': commit_history,
             'owner_info': self.get_repo_owner_info(repo)
         }
+        
+
+    def get_detailed_commit_history(self, repo, max_commits: int = 50) -> List[Dict[str, Any]]:
+        commits = []
+        for commit in repo.get_commits()[:max_commits]:
+            commits.append({
+                'sha': commit.sha,
+                'author': commit.author.login if commit.author else 'Unknown',
+                'date': commit.commit.author.date,
+                'message': commit.commit.message,
+                'additions': commit.stats.additions,
+                'deletions': commit.stats.deletions,
+            })
+        return commits
+
+    def get_detailed_contributors(self, repo) -> List[Dict[str, Any]]:
+        return [
+            {
+                'login': c.login,
+                'contributions': c.contributions,
+                'url': c.html_url,
+                'type': c.type,
+            } for c in repo.get_contributors()
+        ]
+
+    def print_repo_details(self, repo: Dict[str, Any]):
+        logger.info(f"\nDetailed information for {repo['name']}:")
+        logger.info(f"  URL: {repo['url']}")
+        logger.info(f"  Stars: {repo['stars']}, Forks: {repo['forks']}")
+        logger.info(f"  Created: {repo['created']}, Last pushed: {repo['pushed']}")
+        logger.info(f"  Size: {repo['size']} KB")
+        logger.info(f"  Topics: {', '.join(repo['topics'])}")
+        logger.info(f"  Public: {repo['is_public']}")
+        
+        logger.info("  Language Percentages:")
+        for lang, percentage in repo['language_percentages'].items():
+            logger.info(f"    {lang}: {percentage:.2f}%")
+        
+        logger.info("  Contributors:")
+        for contributor in repo['contributors']:
+            logger.info(f"    {contributor['login']}: {contributor['contributions']} contributions")
+        
+        logger.info("  Consistent Contributors:")
+        for contributor in repo['consistent_contributors']:
+            logger.info(f"    {contributor['login']}: Active for {contributor['active_months']} months")
+        
+        logger.info("  Recent Commits:")
+        for commit in repo['commit_history'][:10]:  # Show only the 10 most recent commits
+            logger.info(f"    {commit['date']}: {commit['message'][:50]}... by {commit['author']}")
+            logger.info(f"      Additions: {commit['additions']}, Deletions: {commit['deletions']}")
 
     def get_repo_owner_info(self, repo) -> Dict[str, Any]:
         owner = repo.owner

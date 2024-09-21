@@ -36,7 +36,6 @@ def print_repo_info(repo: Dict[str, Any]):
     logger.info(f"    Size: {repo['size']} KB")
     logger.info(f"    Default Branch: {repo['default_branch']}")
     logger.info(f"    Topics: {', '.join(repo['topics'])}")
-    logger.info(f"    License: {repo['license']}")
     logger.info(f"    Public: {repo['is_public']}")
     logger.info(f"    Owner: {repo['owner_info']['login']} ({repo['owner_info']['type']})")
     if repo['owner_info']['type'] == 'User':
@@ -69,7 +68,6 @@ def save_results_to_file(repos: List[Dict[str, Any]], shared_contributors: Dict[
             f.write(f"  Size: {repo['size']} KB\n")
             f.write(f"  Default Branch: {repo['default_branch']}\n")
             f.write(f"  Topics: {', '.join(repo['topics'])}\n")
-            f.write(f"  License: {repo['license']}\n")
             f.write(f"  Public: {repo['is_public']}\n")
             f.write(f"  Owner: {repo['owner_info']['login']} ({repo['owner_info']['type']})\n")
             if repo['owner_info']['type'] == 'User':
