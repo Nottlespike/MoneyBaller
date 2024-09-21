@@ -6,7 +6,12 @@ import re
 import subprocess
 import json
 import os
+import random
+import time
+import time
+
 from dotenv import load_dotenv
+from collections import deque
 
 load_dotenv()
 
@@ -50,22 +55,57 @@ def get_repos(profile):
     except json.JSONDecodeError as e:
         print(f"Error parsing JSON: {e}")
 
-def get_contributors(repo):
-    # Fetch the content of the file
-    try:
-        contributors_url = repo['contributors_url']
-        response = requests.get(contributors_url)
-        response.raise_for_status()  # Raise an exception for bad responses
+# Load keys from file
+with open('../scraping_keys.txt', 'r') as f:
+    all_scraping_keys = deque(f.read().splitlines())  # Use deque for efficient rotation
 
-        # Parse the JSON content
-        data = json.loads(response.text)
-        contributors = [(user['html_url'], user['contributions']) for user in data]
-    
-        return contributors
-    except Exception as e:
-        print(e)
-        return []
-    
+print("Available keys:", all_scraping_keys)
+
+def rotate_key():
+    """Rotate the API key to the end of the queue."""
+    if all_scraping_keys:
+        all_scraping_keys.rotate(-1)
+    return all_scraping_keys[0] if all_scraping_keys else None
+
+def get_contributors(url, initial_delay=1, max_delay=60):
+    delay = initial_delay
+    while all_scraping_keys:
+        current_key = all_scraping_keys[0]
+        try:
+            response = requests.get(
+                url='https://app.scrapingbee.com/api/v1/',
+                params={
+                    'api_key': current_key,
+                    'url': url,  
+                }
+            )
+            print(f'Response HTTP Status Code: {response.status_code}')
+            # Parse the JSON content
+            data = json.loads(response.text)
+            print(data)
+            input()
+            contributors = [(user['html_url'], user['contributions']) for user in data]
+            return contributors
+
+        except requests.exceptions.RequestException as e:
+            print(f"Request failed: {e}")
+            if response.status_code == 403 or "Credits" in str(e):
+                print(f"API key {current_key} exhausted. Removing and rotating to next key.")
+                all_scraping_keys.popleft()  # Remove the exhausted key
+            elif response.status_code == 429:  # Too Many Requests
+                print(f"Rate limited. Waiting for {delay} seconds before retrying...")
+                time.sleep(delay)
+                delay = min(delay * 2, max_delay)  # Exponential backoff with a maximum delay
+            else:
+                print(f"Unexpected error. Rotating to next key.")
+                rotate_key()  # Rotate to the next key for other errors
+            
+            if not all_scraping_keys:
+                print("All API keys exhausted.")
+                return []
+        
+    return []  # This line will be reached if we exit the while loop (i.e., all keys are exhausted)
+
 
 root_profile = 'https://github.com/Nottlespike'
 stack = queue.Queue()
@@ -80,7 +120,7 @@ while not stack.empty():
     repos = get_repos(profile)
     for repo in repos:
         #print(f'scraping repo {repo}')
-        contributors = get_contributors(repo)
+        contributors = get_contributors(repo['contributors_url'])
         print(f'got {len(contributors)} contributors ')
         for contributor in contributors: 
             if len(all_profiles) > max_contributors: 
