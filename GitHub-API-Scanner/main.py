@@ -14,7 +14,7 @@ def main():
     try:
         # Load environment variables
         load_dotenv()
-        
+       
         github_token = os.getenv('GITHUB_TOKEN')
         if not github_token:
             raise ValueError("GitHub token not found. Set GITHUB_TOKEN env var.")
@@ -24,12 +24,12 @@ def main():
             repo_config=RepoConfig(
                 min_language_percentage=60.0,
                 max_contributors=3,
-                min_stars=10,
-                max_repos=50,
-                recent_days=7
+                min_stars=100,  # Increased for global search
+                max_repos=100,  # Increased for global search
+                recent_days=30  # Increased for global search
             ),
             github_token=github_token,
-            excluded_repos=["my-private-repo"],
+            excluded_repos=[],  # Removed personal repo exclusion
             included_languages=[Language.PYTHON, Language.JAVASCRIPT],
             sort_by=SortCriteria.STARS,
             sort_order=SortOrder.DESCENDING,
@@ -44,14 +44,13 @@ def main():
         )
 
         # Initialize components
-        api_wrapper = GitHubAPIWrapper(search_config.github_token)
+        api_wrapper = GitHubAPIWrapper(search_config.github_token, search_config)  # Updated to include search_config
         criteria = RepoCriteria(search_config)
         finder = RepoFinder(api_wrapper, criteria, search_config)
 
         # Find repos and analyze
-        logger.info("Starting repo search...")
-        repos = finder.find_repos()
-
+        logger.info("Starting global repo search...")
+        repos = finder.find_repos_global()  # Changed to use global search
         logger.info("Analyzing shared contributors...")
         shared_contributors = finder.find_shared_contributors(repos)
 
@@ -59,7 +58,6 @@ def main():
         logger.info("Found repositories:")
         for repo in repos:
             print_repo_info(repo)
-
         logger.info("Shared contributors:")
         print_shared_contributors(shared_contributors)
 
