@@ -10,6 +10,7 @@ from logging_setup import setup_logger
 logger = setup_logger()
 
 def main():
+    all_contributors = []
     try:
         # Load environment variables
         load_dotenv()
