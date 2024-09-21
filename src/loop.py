@@ -75,8 +75,6 @@ stack.put((root_profile, 0))
 max_contributors = 30
 
 while not stack.empty():
-    if len(all_profiles) > max_contributors: 
-        break
     profile = stack.get()
     all_profiles.append(profile)
     repos = get_repos(profile)
@@ -85,6 +83,8 @@ while not stack.empty():
         contributors = get_contributors(repo)
         print(f'got {len(contributors)} contributors ')
         for contributor in contributors: 
+            if len(all_profiles) > max_contributors: 
+                break
             if contributor not in added:
                 all_profiles.append(contributor)
                 stack.put(contributor)
