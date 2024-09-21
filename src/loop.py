@@ -15,7 +15,6 @@ from collections import deque
 
 load_dotenv()
 
-
 # The curl command
 def get_repos(profile):
     if isinstance(profile, tuple):
@@ -80,10 +79,13 @@ def get_contributors(url, initial_delay=1, max_delay=60):
                 }
             )
             print(f'Response HTTP Status Code: {response.status_code}')
+
+            # unexpected err
+            if response.status_code != 200:
+                print(response.text)
+                return []
             # Parse the JSON content
             data = json.loads(response.text)
-            print(data)
-            input()
             contributors = [(user['html_url'], user['contributions']) for user in data]
             return contributors
 
