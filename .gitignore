@@ -13,6 +13,7 @@ env/
 .idea/
 *.swp
 *.swo
+*.json
 # OS generated files
 **.log
 **results.txt
