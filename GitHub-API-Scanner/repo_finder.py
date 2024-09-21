@@ -104,11 +104,11 @@ class RepoFinder:
         self.criteria = criteria
         self.config = config
 
-    def find_repos(self) -> List[Dict[str, Any]]:
+    def find_repos_global(self) -> List[Dict[str, Any]]:
         all_repos = []
         matching_repos = []
         repo_count = 0
-        logger.info("Searching for repositories:")
+        logger.info("Searching for repositories globally:")
         logger.info(f"  Languages: {', '.join([lang.value for lang in self.config.included_languages])}")
         logger.info(f"  Min percentage: {self.config.repo_config.min_language_percentage}%")
         logger.info(f"  Max contributors: {self.config.repo_config.max_contributors}")
@@ -117,10 +117,9 @@ class RepoFinder:
         logger.info(f"  Active within: {self.config.repo_config.recent_days} days")
         logger.info(f"  Sort by: {self.config.sort_by.value} ({self.config.sort_order.value}ending)")
         logger.info("  Consistent contributors: Active in at least 70% of months over past 2 years")
-        if self.config.excluded_repos:
-            logger.info(f"  Excluded repos: {', '.join(self.config.excluded_repos)}")
 
-        for repo in self.api_wrapper.get_user_repos():
+        query = self.construct_search_query()
+        for repo in self.api_wrapper.search_repositories(query):
             try:
                 if repo_count >= self.config.repo_config.max_repos:
                     logger.info(f"Max repos ({self.config.repo_config.max_repos}) reached. Stopping.")
@@ -152,32 +151,46 @@ class RepoFinder:
         logger.info(f"Search complete. Found {len(all_repos)} total repos, {len(matching_repos)} meeting all criteria.")
         return all_repos
 
-    def print_repo_details(self, repo: Dict[str, Any]):
-        logger.info(f"\nDetailed information for {repo['name']}:")
-        logger.info(f"  URL: {repo['url']}")
-        logger.info(f"  Meets all criteria: {'Yes' if repo['meets_criteria'] else 'No'}")
-        logger.info(f"  Stars: {repo['stars']}, Forks: {repo['forks']}")
-        logger.info(f"  Created: {repo['created']}, Last pushed: {repo['pushed']}")
-        logger.info(f"  Size: {repo['size']} KB")
-        logger.info(f"  Topics: {', '.join(repo['topics'])}")
-        logger.info(f"  Public: {repo['is_public']}")
+    def construct_search_query(self) -> str:
+        query_parts = []
         
-        logger.info("  Language Percentages:")
-        for lang, percentage in repo['language_percentages'].items():
-            logger.info(f"    {lang}: {percentage:.2f}%")
+        # Add language filter
+        languages = " ".join(f"language:{lang.value}" for lang in self.config.included_languages)
+        query_parts.append(languages)
         
-        logger.info("  Contributors:")
-        for contributor in repo['contributors']:
-            logger.info(f"    {contributor['login']}: {contributor['contributions']} contributions")
+        # Add star filter
+        query_parts.append(f"stars:>={self.config.repo_config.min_stars}")
         
-        logger.info("  Consistent Contributors:")
-        for contributor in repo['consistent_contributors']:
-            logger.info(f"    {contributor['login']}: Active for {contributor['active_months']} months")
+        # Add size filter
+        if self.config.min_repo_size:
+            query_parts.append(f"size:>={self.config.min_repo_size}")
+        if self.config.max_repo_size:
+            query_parts.append(f"size:<={self.config.max_repo_size}")
         
-        logger.info("  Recent Commits:")
-        for commit in repo['commit_history'][:10]:  # Show only the 10 most recent commits
-            logger.info(f"    {commit['date']}: {commit['message'][:50]}... by {commit['author']}")
-            logger.info(f"      Additions: {commit['additions']}, Deletions: {commit['deletions']}")
+        # Add fork filter
+        if not self.config.include_forks:
+            query_parts.append("fork:false")
+        
+        # Add created date filter
+        if self.config.created_after:
+            created_after = self.config.created_after.strftime("%Y-%m-%d")
+            query_parts.append(f"created:>={created_after}")
+        
+        # Add pushed date filter
+        if self.config.pushed_after:
+            pushed_after = self.config.pushed_after.strftime("%Y-%m-%d")
+            query_parts.append(f"pushed:>={pushed_after}")
+        
+        # Add topics filter
+        if self.config.topics:
+            topics = " ".join(f"topic:{topic}" for topic in self.config.topics)
+            query_parts.append(topics)
+        
+        # Add visibility filter
+        if self.config.is_public is not None:
+            query_parts.append("is:public" if self.config.is_public else "is:private")
+        
+        return " ".join(query_parts)
 
     def create_repo_dict(self, repo) -> Dict[str, Any]:
         consistent_contributors = self.criteria.get_consistent_contributors(repo)
@@ -200,7 +213,6 @@ class RepoFinder:
             'commit_history': commit_history,
             'owner_info': self.get_repo_owner_info(repo)
         }
-        
 
     def get_detailed_commit_history(self, repo, max_commits: int = 50) -> List[Dict[str, Any]]:
         commits = []

@@ -13,7 +13,7 @@ def main():
     try:
         # Load environment variables
         load_dotenv()
-        
+       
         github_token = os.getenv('GITHUB_TOKEN')
         if not github_token:
             raise ValueError("GitHub token not found. Set GITHUB_TOKEN env var.")
@@ -25,7 +25,7 @@ def main():
                 max_contributors=3,
                 min_stars=100,  # Increased for global search
                 max_repos=100,  # Increased for global search
-                recent_days=5  # Increased for global search
+                recent_days=30  # Increased for global search
             ),
             github_token=github_token,
             excluded_repos=[],  # Removed personal repo exclusion
@@ -43,13 +43,13 @@ def main():
         )
 
         # Initialize components
-        api_wrapper = GitHubAPIWrapper(search_config.github_token)
+        api_wrapper = GitHubAPIWrapper(search_config.github_token, search_config)  # Updated to include search_config
         criteria = RepoCriteria(search_config)
         finder = RepoFinder(api_wrapper, criteria, search_config)
 
         # Find repos and analyze
         logger.info("Starting global repo search...")
-        repos = finder.find_repos_global()  # New method for global search
+        repos = finder.find_repos_global()  # Changed to use global search
         logger.info("Analyzing shared contributors...")
         shared_contributors = finder.find_shared_contributors(repos)
 
