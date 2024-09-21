@@ -13,9 +13,9 @@ env/
 .idea/
 *.swp
 *.swo
-
 # OS generated files
 **.log
+**results.txt
 .DS_Store
 .DS_Store?
 ._*
