@@ -35,7 +35,7 @@
             - repo2
 '''
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 from typing import Dict, List
 import uvicorn
@@ -53,10 +53,13 @@ class RepoRequest(BaseModel):
     github_repo_link: str
 
 @app.get("/scores")
-async def get_scores(request: ScoresRequest):
+async def get_scores(
+    seed_github_link: str = Query(..., description="The seed GitHub link"),
+    num_candidates: int = Query(..., description="Number of candidates")
+):
     try:
         # Run BFS scraping to get contributors and their repos
-        scores = fetch_candidates_and_scores(request.seed_github_link, request.num_candidates)
+        scores = fetch_candidates_and_scores(seed_github_link, num_candidates)
 
         return scores
     except Exception as e:
