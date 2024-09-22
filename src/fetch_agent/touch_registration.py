@@ -9,7 +9,5 @@ agent = Agent(
 )
  
 fund_agent_if_low(agent.wallet.address())
-
-print("uAgent address: ", agent.address)
  
 agent.run()
