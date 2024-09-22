@@ -266,6 +266,8 @@ if __name__ == '__main__':
     import json
 
     limit = 3
+    top_files_limit = 3
+
     init_repos = explore_repos(limit=1)
     user_repos: Dict[NamedUser, List[Repository]] = extract_rare_repos(extract_contributors(init_repos))
     for user,repos in user_repos.items():
@@ -282,7 +284,7 @@ if __name__ == '__main__':
             print(repo.name)
             download_py_files(repo.id, repo_path)
 
-            top_files = analyze_repository(repo_path)
+            top_files = analyze_repository(repo_path)[:top_files_limit]
             print(f"Found {len(top_files)} important files in {repo.name}")
             importance_result = [
                 {"file": os.path.relpath(file, repo_path), "importance": importance}

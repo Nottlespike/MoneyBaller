@@ -39,6 +39,7 @@ Please respond with only a JSON object containing one key: 'score' (an integer f
 
     max_retries = 5
     for attempt in range(max_retries):
+        print('attempting...')
         try:
             response = client.messages.create(
                 model="claude-3-sonnet-20240229",
@@ -46,7 +47,6 @@ Please respond with only a JSON object containing one key: 'score' (an integer f
                 temperature=0.2,
                 messages=[{"role": "user", "content": prompt}]
             )
-
             score = extract_score(response.content[0].text)
             if score is not None:
                 return {"score": score, "analyzed": True}
@@ -70,9 +70,15 @@ Please respond with only a JSON object containing one key: 'score' (an integer f
 def code_quality_analyze(repo_path, important_files):
     scores = []
     analyzed_files = 0
+    all_content = '' 
     for file_info in important_files:
         file_path = os.path.join(repo_path, file_info['file'])
         if os.path.exists(file_path):
+
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
+                content = file.read()
+            all_content += content
+
             result = analyze_file(file_path)
             if result["analyzed"]:
                 scores.append(result['score'])
@@ -83,12 +89,15 @@ def code_quality_analyze(repo_path, important_files):
         else:
             print(f"File not found: {file_path}")
     
+    # TODO summary
+    summary = ai_chat(all_content)
+
     if analyzed_files > 0:
         avg_score = sum(scores) / analyzed_files
         analysis_rate = (analyzed_files / len(important_files)) * 100
-        return avg_score, analysis_rate
+        return avg_score, analysis_rate, summary
     else:
-        return 0, 0
+        return 0, 0, summary
 
 
 def main():
