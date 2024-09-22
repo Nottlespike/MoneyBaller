@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 
+from functools import cache
 import queue
 import requests
 import re
@@ -40,7 +41,7 @@ def get_repos(profile_url: str) -> List[str]:
             repositories = json.load(f)
 
         # Now you can work with the parsed JSON data
-        repos = []
+        result_repos = []
         for repo in repositories:
             #print(f"Repository: {repo['name']}")
             #print(f"Description: {repo['description']}")
@@ -48,8 +49,8 @@ def get_repos(profile_url: str) -> List[str]:
             print("---")
             # skip files
             if not os.path.splitext(repo['html_url'])[-1]:
-                repos.append(repo)
-        return repos
+                result_repos.append(repo)
+        return result_repos
 
     except subprocess.CalledProcessError as e:
         print(f"Error executing curl command: {e}")
@@ -171,6 +172,7 @@ def run_bfs_scraping(seed_github_link: str, num_candidates: int=10) -> Dict[str,
     return all_profiles
 
 
+@cache
 def fetch_candidates_and_scores(seed_github_link: str, num_candidates: int=10) -> Dict[str, Tuple[int, Any]]:
     # Run BFS scraping to get contributors and their repos
     all_profiles = run_bfs_scraping(seed_github_link, num_candidates)
