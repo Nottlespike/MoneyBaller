@@ -8,7 +8,7 @@ import json
 import os
 import random
 import time
-import time
+from typing import Union, List, Optional, Tuple
 
 from dotenv import load_dotenv
 from collections import deque
@@ -16,7 +16,7 @@ from collections import deque
 load_dotenv()
 
 # The curl command
-def get_repos(profile):
+def get_repos(profile: Union[tuple, str]) -> List[str]:
     """
     Performs web scraping on GitHub repositories and contributors starting from a root profile URL,
     utilizing API keys for access and saving the results to a text file.
@@ -29,7 +29,7 @@ def get_repos(profile):
         '-H', f"Authorization: {os.getenv('GH_API_KEY')}",
         f'https://api.github.com/users/{username}/repos'
     ]
-    print(curl_command)
+    print(f"{curl_command=}")
     try:
         result = subprocess.run(curl_command, capture_output=True, text=True, check=True)
 
@@ -58,13 +58,13 @@ def get_repos(profile):
     except json.JSONDecodeError as e:
         print(f"Error parsing JSON: {e}")
 
-def rotate_key(all_scraping_keys):
+def rotate_key(all_scraping_keys) -> Optional[str]:
     """Rotate the API key to the end of the queue."""
     if all_scraping_keys:
         all_scraping_keys.rotate(-1)
     return all_scraping_keys[0] if all_scraping_keys else None
 
-def get_contributors(url, all_scraping_keys, initial_delay=1, max_delay=60):
+def get_contributors(url: str, all_scraping_keys: deque, initial_delay=1, max_delay=60) -> List[Tuple[str, int]]:
     """
     Retrieves a list of contributors for a given URL using multiple API
     keys with error handling for rate limiting and key exhaustion.
@@ -112,6 +112,10 @@ def get_contributors(url, all_scraping_keys, initial_delay=1, max_delay=60):
 
 
 def run_bfs_loop(seed_github_link: str, max_contributors: int=20):
+    """
+    Performs BFS on GitHub repositories to retrieve contributors' profiles and their contributions,
+    using scraping keys and limiting the number of contributors fetched.
+    """
     # Load keys from file
     with open('scraping_keys.txt', 'r') as f:
         all_scraping_keys = deque(f.read().splitlines())  # Use deque for efficient rotation
@@ -124,7 +128,7 @@ def run_bfs_loop(seed_github_link: str, max_contributors: int=20):
     all_profiles = []
 
     def do_dfs():
-        # DFS on the q starting from root_profile
+        # DFS on the q starting from seed_github_link
         while not q.empty():
             profile = q.get()
             all_profiles.append(profile)
