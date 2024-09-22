@@ -67,6 +67,26 @@ Please respond with only a JSON object containing one key: 'score' (an integer f
     print(f"Failed to analyze {file_path} after {max_retries} attempts.")
     return {"score": None, "analyzed": False}
 
+def generate_summary(content):
+    prompt = f"""Please provide a concise summary (about 500 tokens) of the following Python codebase:
+
+{content}
+
+Focus on the main functionality, key components, and overall structure of the code.
+"""
+
+    try:
+        response = client.messages.create(
+            model="claude-3-sonnet-20240229",
+            max_tokens=600,
+            temperature=0.2,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.content[0].text.strip()
+    except Exception as e:
+        print(f"Error generating summary: {str(e)}")
+        return "Failed to generate summary."
+
 def code_quality_analyze(repo_path, important_files):
     scores = []
     analyzed_files = 0
@@ -89,8 +109,7 @@ def code_quality_analyze(repo_path, important_files):
         else:
             print(f"File not found: {file_path}")
     
-    # TODO summary
-    summary = ai_chat(all_content)
+    summary = generate_summary(all_content)
 
     if analyzed_files > 0:
         avg_score = sum(scores) / analyzed_files
@@ -98,7 +117,6 @@ def code_quality_analyze(repo_path, important_files):
         return avg_score, analysis_rate, summary
     else:
         return 0, 0, summary
-
 
 def main():
     repos_dir = os.path.join('data', 'github_repos_python_files')
@@ -112,7 +130,7 @@ def main():
     with ThreadPoolExecutor(max_workers=4) as executor:
         future_to_repo = {
             executor.submit(
-                analyze_repository, 
+                code_quality_analyze, 
                 os.path.join(repos_dir, repo), 
                 file_importance_data[repo]
             ): repo 
@@ -122,14 +140,16 @@ def main():
         for future in as_completed(future_to_repo):
             repo = future_to_repo[future]
             try:
-                avg_score, analysis_rate = future.result()
+                avg_score, analysis_rate, summary = future.result()
                 results[repo] = {
                     "average_score": avg_score,
                     "analysis_rate": analysis_rate,
+                    "summary": summary
                 }
                 print(f"Repository {repo}:")
                 print(f"  Average score: {avg_score:.2f}")
                 print(f"  Analysis rate: {analysis_rate:.2f}%")
+                print(f"  Summary: {summary[:100]}...")  # Print first 100 characters of summary
             except Exception as exc:
                 print(f'{repo} generated an exception: {exc}')
 

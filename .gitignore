@@ -33,3 +33,4 @@ secrets.json
 github_repo_analysis_results.txt
 /data
 contributors.txt
+/users
