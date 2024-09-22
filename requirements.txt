@@ -2,3 +2,6 @@ PyGithub==1.55
 python-dotenv==0.19.2
 colorlog==6.8.2
 pydantic==2.9.2
+bs4==0.0.2
+anthropic>=0.34.2
+pathspec==0.12.1

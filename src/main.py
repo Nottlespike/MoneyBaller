@@ -38,8 +38,6 @@ def main():
             include_forks=False,
             created_after=datetime.now() - timedelta(days=365),  # Repos created in the last year
             pushed_after=datetime.now() - timedelta(days=30),  # Repos pushed to in the last month
-            topics=["machine-learning", "data-science"],
-            license="MIT",
             is_public=True
         )
 

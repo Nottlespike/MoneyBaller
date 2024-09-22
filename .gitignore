@@ -30,3 +30,5 @@ Thumbs.db
 # Project specific
 config.ini
 secrets.json
+github_repo_analysis_results.txt
+/data
