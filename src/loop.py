@@ -40,7 +40,7 @@ def get_repos(profile_url: str) -> List[str]:
             repositories = json.load(f)
 
         # Now you can work with the parsed JSON data
-        repos = []
+        result_repos = []
         for repo in repositories:
             #print(f"Repository: {repo['name']}")
             #print(f"Description: {repo['description']}")
@@ -48,8 +48,8 @@ def get_repos(profile_url: str) -> List[str]:
             print("---")
             # skip files
             if not os.path.splitext(repo['html_url'])[-1]:
-                repos.append(repo)
-        return repos
+                result_repos.append(repo)
+        return result_repos
 
     except subprocess.CalledProcessError as e:
         print(f"Error executing curl command: {e}")
