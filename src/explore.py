@@ -271,6 +271,8 @@ if __name__ == '__main__':
     init_repos = explore_repos(limit=1)
     user_repos: Dict[NamedUser, List[Repository]] = extract_rare_repos(extract_contributors(init_repos))
     for user,repos in user_repos.items():
+        if not user.name:
+            continue
         user_dir = os.path.join('users', user.name)
         if os.path.exists(user_dir): 
             print('skipping', user)
@@ -296,44 +298,6 @@ if __name__ == '__main__':
 
             with open(os.path.join(repo_path, 'importance.json'), 'w') as f:
                 json.dump(importance_result, f, indent=2)
-
-            # test      
-            '''
-            results = {}
-            print('testing')
-            code_quality_analyze(repo_path, importance_result)
-       
-            with ThreadPoolExecutor(max_workers=4) as executor:
-                future_to_repo = {
-                    executor.submit(
-                        code_quality_analyze, 
-                        repo_path,
-                        importance_result
-                    ): repo.html_url 
-                    for repo in [repo]
-                }
-                
-                for future in as_completed(future_to_repo):
-                    repo = future_to_repo[future]
-                    try:
-                        avg_score, analysis_rate, summary = future.result()
-                        results[repo] = {
-                            "average_score": avg_score,
-                            "analysis_rate": analysis_rate,
-                            "repo_url": repo,
-                            'user_url' : user.html_url,
-                            'summary': summary
-                        }
-                        print(f"Repository {repo}:")
-                        print(f"  Average score: {avg_score:.2f}")
-                        print(f"  Analysis rate: {analysis_rate:.2f}%")
-                    except Exception as exc:
-                        print(f'{repo} generated an exception: {exc}')
-
-            with open(os.path.join(user_dir,'repo_quality_scores.json'), 'w') as f:
-                json.dump(results, f, indent=2)
-            # end
-            '''
             
         results = {}
        
