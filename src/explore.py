@@ -293,10 +293,47 @@ if __name__ == '__main__':
 
             with open(os.path.join(repo_path, 'importance.json'), 'w') as f:
                 json.dump(importance_result, f, indent=2)
-        
+
+            # test      
+            '''
+            results = {}
+            print('testing')
+            code_quality_analyze(repo_path, importance_result)
+       
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                future_to_repo = {
+                    executor.submit(
+                        code_quality_analyze, 
+                        repo_path,
+                        importance_result
+                    ): repo.html_url 
+                    for repo in [repo]
+                }
+                
+                for future in as_completed(future_to_repo):
+                    repo = future_to_repo[future]
+                    try:
+                        avg_score, analysis_rate, summary = future.result()
+                        results[repo] = {
+                            "average_score": avg_score,
+                            "analysis_rate": analysis_rate,
+                            "repo_url": repo,
+                            'user_url' : user.html_url,
+                            'summary': summary
+                        }
+                        print(f"Repository {repo}:")
+                        print(f"  Average score: {avg_score:.2f}")
+                        print(f"  Analysis rate: {analysis_rate:.2f}%")
+                    except Exception as exc:
+                        print(f'{repo} generated an exception: {exc}')
+
+            with open(os.path.join(user_dir,'repo_quality_scores.json'), 'w') as f:
+                json.dump(results, f, indent=2)
+            # end
+            '''
+            
         results = {}
        
-
         with ThreadPoolExecutor(max_workers=4) as executor:
             future_to_repo = {
                 executor.submit(

@@ -90,9 +90,13 @@ Focus on the main functionality, key components, and overall structure of the co
 def code_quality_analyze(repo_path, important_files):
     scores = []
     analyzed_files = 0
+    if len(important_files) == 0:
+        return 0, 0, 'nothing to analyze, skipping'
     all_content = '' 
     for file_info in important_files:
         file_path = os.path.join(repo_path, file_info['file'])
+        print(file_path)
+        print(os.path.exists(file_path))
         if os.path.exists(file_path):
 
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
