@@ -27,7 +27,7 @@ class SortOrder(str, Enum):
 class RepoConfig(BaseModel):
     min_language_percentage: float = Field(default=70.0, ge=0.0, le=100.0)
     max_contributors: int = Field(default=2, ge=1)
-    min_stars: int = Field(default=5, ge=0)
+    max_stars: int = Field(default=100, ge=0)
     max_repos: int = Field(default=100, ge=1)
     recent_days: int = Field(default=5, ge=1)
 

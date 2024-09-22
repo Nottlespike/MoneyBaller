@@ -2,6 +2,8 @@ import os
 import json
 from pathlib import Path
 from collections import defaultdict
+from github.Repository import Repository
+from extractor.code_extractor import download_py_files
 import re
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
@@ -77,14 +79,15 @@ def analyze_repository(repo_path):
     
     return top_files
 
-def main():
-    repos_dir = os.path.join('data', 'github_repos_python_files')
-    results = {}
+from typing import List
 
-    for repo in os.listdir(repos_dir):
-        repo_path = os.path.join(repos_dir, repo)
+def create_and_run(repos_dir, repos: List[Repository]):
+    results = {}
+    for repo in repos:
+        repo_path = os.path.join(repos_dir, repo.name)
+        os.makedirs(repo_path, exist_ok=True)
         if os.path.isdir(repo_path):
-            print(f"Analyzing repository: {repo}")
+            print(f"Analyzing repository: {repo.name}")
             top_files = analyze_repository(repo_path)
             results[repo] = [
                 {"file": os.path.relpath(file, repo_path), "importance": importance}
@@ -92,10 +95,11 @@ def main():
             ]
             print(f"Found {len(top_files)} important files in {repo}")
 
-    with open('repo_file_importance.json', 'w') as f:
+    with open(os.path.join(user_dir, 'repo_file_importance.json'), 'w') as f:
         json.dump(results, f, indent=2)
 
     print("Repository analysis complete. Results saved to repo_file_importance.json")
 
 if __name__ == "__main__":
-    main()
+    pass
+    #main()
