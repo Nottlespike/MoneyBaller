@@ -90,7 +90,7 @@ def code_quality_analyze(repo_path, important_files):
             print(f"File not found: {file_path}")
     
     # TODO summary
-    summary = ai_chat(all_content)
+    summary = 'example summary'
 
     if analyzed_files > 0:
         avg_score = sum(scores) / analyzed_files

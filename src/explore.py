@@ -295,6 +295,10 @@ if __name__ == '__main__':
                 json.dump(importance_result, f, indent=2)
         
         results = {}
+        results = {
+            'repo_user': user.avatar_url,
+            'repo_url': repo.html_url
+        }
 
         with ThreadPoolExecutor(max_workers=4) as executor:
             future_to_repo = {
@@ -309,10 +313,11 @@ if __name__ == '__main__':
             for future in as_completed(future_to_repo):
                 repo = future_to_repo[future]
                 try:
-                    avg_score, analysis_rate = future.result()
+                    avg_score, analysis_rate, summary = future.result()
                     results[repo] = {
                         "average_score": avg_score,
                         "analysis_rate": analysis_rate,
+                        'summary': summary
                     }
                     print(f"Repository {repo}:")
                     print(f"  Average score: {avg_score:.2f}")
