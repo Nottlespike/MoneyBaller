@@ -19,7 +19,7 @@ def parse_repo_results(file_path):
         repos = [match for match in matches]
     return repos
 
-def download_py_files(repo_name, output_dir):
+def download_py_files(repo_name, output_dir, max_files=30):
     try:
         # Get the repository
         repo = g.get_repo(repo_name)
@@ -29,17 +29,21 @@ def download_py_files(repo_name, output_dir):
         
         # Get all Python files in the repository
         contents = repo.get_contents("")
+        down = 0
         while contents:
             file_content = contents.pop(0)
             if file_content.type == "dir":
                 contents.extend(repo.get_contents(file_content.path))
             elif file_content.name.endswith('.py'):
+                if down > max_files:
+                    break
                 # Download the file
                 file_path = os.path.join(repo_dir, file_content.path)
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
                 with open(file_path, 'wb') as f:
                     f.write(file_content.decoded_content)
                 print(f"Downloaded: {file_path}")
+                down += 1
     
     except GithubException as e:
         print(f"Error accessing repository {repo_name}: {e}")

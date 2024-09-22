@@ -272,6 +272,9 @@ if __name__ == '__main__':
     user_repos: Dict[NamedUser, List[Repository]] = extract_rare_repos(extract_contributors(init_repos))
     for user,repos in user_repos.items():
         user_dir = os.path.join('users', user.name)
+        if os.path.exists(user_dir): 
+            print('skipping', user)
+            continue
         os.makedirs(user_dir, exist_ok=True)
 
         # download .py files
