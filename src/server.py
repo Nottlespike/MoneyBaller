@@ -40,9 +40,8 @@ from pydantic import BaseModel
 from typing import Dict, List
 import uvicorn
 
-# Import necessary functions (to be implemented)
-from loop import run_bfs_scraping
-from repo_analyzer import analyze_repo
+# Import necessary functions
+from loop import fetch_candidates_and_scores
 
 app = FastAPI()
 
@@ -57,16 +56,7 @@ class RepoRequest(BaseModel):
 async def get_scores(request: ScoresRequest):
     try:
         # Run BFS scraping to get contributors and their repos
-        contributors = run_bfs_scraping(request.seed_github_link, request.num_candidates)
-
-        scores = {}
-        for contributor in contributors:
-            repo_scores = []
-            for repo in contributor.repos:
-                # Analyze each repo
-                repo_summary = analyze_repo(repo)
-                repo_scores.append(repo_summary)
-            scores[contributor.username] = repo_scores
+        scores = fetch_candidates_and_scores(request.seed_github_link, request.num_candidates)
 
         return {"scores": scores}
     except Exception as e:
@@ -76,7 +66,7 @@ async def get_scores(request: ScoresRequest):
 async def get_repo_info(request: RepoRequest):
     try:
         # Analyze the specified repo
-        repo_info = analyze_repo(request.github_repo_link)
+        repo_info = "REPO_SUMMARY TEST"
         return repo_info
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
