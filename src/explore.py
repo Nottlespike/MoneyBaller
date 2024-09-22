@@ -259,17 +259,21 @@ def extract_rare_repos(contributors: List[NamedUser]):
     return user_repos
 
 if __name__ == '__main__':
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     from analyzer.repo_analyzer import analyze_repository
+    from analyzer.code_quality_analyzer import code_quality_analyze
     from extractor.code_extractor import download_py_files
     import json
-    repos = explore_repos(limit=1)
-    user_repos: Dict[NamedUser, List[Repository]] = extract_rare_repos(extract_contributors(repos))
+
+    limit = 3
+    init_repos = explore_repos(limit=1)
+    user_repos: Dict[NamedUser, List[Repository]] = extract_rare_repos(extract_contributors(init_repos))
     for user,repos in user_repos.items():
         user_dir = os.path.join('users', user.name)
         os.makedirs(user_dir, exist_ok=True)
 
         # download .py files
-        for repo in repos:
+        for repo in repos[:limit]:
             repo_path = os.path.join(user_dir, repo.name)
             os.makedirs(repo_path, exist_ok=True)
             if repo.name[0] == '.': 
@@ -280,14 +284,42 @@ if __name__ == '__main__':
 
             top_files = analyze_repository(repo_path)
             print(f"Found {len(top_files)} important files in {repo.name}")
-            result = [
+            importance_result = [
                 {"file": os.path.relpath(file, repo_path), "importance": importance}
                 for file, importance in top_files
             ]
 
             with open(os.path.join(repo_path, 'importance.json'), 'w') as f:
-                json.dump(result, f, indent=2)
-  
+                json.dump(importance_result, f, indent=2)
+        
+        results = {}
 
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_to_repo = {
+                executor.submit(
+                    code_quality_analyze, 
+                    repo_path,
+                    importance_result
+                ): repo.name 
+                for repo in repos
+            }
+            
+            for future in as_completed(future_to_repo):
+                repo = future_to_repo[future]
+                try:
+                    avg_score, analysis_rate = future.result()
+                    results[repo] = {
+                        "average_score": avg_score,
+                        "analysis_rate": analysis_rate,
+                    }
+                    print(f"Repository {repo}:")
+                    print(f"  Average score: {avg_score:.2f}")
+                    print(f"  Analysis rate: {analysis_rate:.2f}%")
+                except Exception as exc:
+                    print(f'{repo} generated an exception: {exc}')
 
+        with open(os.path.join(user_dir,'repo_quality_scores.json'), 'w') as f:
+            json.dump(results, f, indent=2)
+
+        print("Analysis complete. Results saved to repo_quality_scores.json")
 

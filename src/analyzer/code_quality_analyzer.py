@@ -67,7 +67,7 @@ Please respond with only a JSON object containing one key: 'score' (an integer f
     print(f"Failed to analyze {file_path} after {max_retries} attempts.")
     return {"score": None, "analyzed": False}
 
-def analyze_repository(repo_path, important_files):
+def code_quality_analyze(repo_path, important_files):
     scores = []
     analyzed_files = 0
     for file_info in important_files:
@@ -89,6 +89,7 @@ def analyze_repository(repo_path, important_files):
         return avg_score, analysis_rate
     else:
         return 0, 0
+
 
 def main():
     repos_dir = os.path.join('data', 'github_repos_python_files')
