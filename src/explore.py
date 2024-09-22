@@ -276,7 +276,6 @@ if __name__ == '__main__':
                 print('skipping', repo.name)
                 continue
             print(repo.name)
-            input()
             download_py_files(repo.id, repo_path)
 
             top_files = analyze_repository(repo_path)
