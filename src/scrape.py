@@ -1,35 +1,58 @@
-from bs4 import BeautifulSoup
-import re
 import requests
-def extract_collaborator_urls(html_content):
+from bs4 import BeautifulSoup
+
+def get_html_content(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.text
+    except requests.RequestException as e:
+        print(f"Error fetching URL {url}: {e}")
+        return None
+
+def scrape_github_profile(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
     
-    # Find the contributors section
-    contributors_section = soup.find('a', href=re.compile(r'/graphs/contributors'))
+    vcard_details = soup.find('ul', class_='vcard-details')
     
-    if contributors_section:
-        # Find the ul containing the list of contributors
-        contributors_list = contributors_section.find_next('ul', class_='list-style-none')
+    if not vcard_details:
+        return None
+    
+    info = {}
+    
+    for li in vcard_details.find_all('li'):
+        if 'octicon-location' in str(li):
+            info['location'] = li.text.strip()
+        elif 'octicon-link' in str(li):
+            link = li.find('a')
+            info['website'] = link.get('href') if link else ''
         
-        if contributors_list:
-            # Find all a tags with href starting with 'https://github.com/'
-            collaborator_links = contributors_list.find_all('a', href=lambda href: href and href.startswith('https://github.com/'))
-            
-            # Extract and return the URLs
-            collaborator_urls = [link['href'] for link in collaborator_links]
-            
-            return collaborator_urls
+        # Direct parsing for specific social media links
+        link = li.find('a')
+        if link:
+            href = link.get('href', '')
+            if 'https://twitter.com/' in href:
+                info['twitter'] = href
+            elif 'https://www.linkedin.com/' in href:
+                info['linkedin'] = href
+            elif 'https://twitch.tv/' in href:
+                info['twitch'] = href
     
-    return []
-    
-def get_contributors(repo):
-    html_content = requests.get(repo).text
-    return extract_collaborator_urls(html_content)
+    return info
 
-html_content = requests.get('https://github.com/ggerganov/llama.cpp')
-print(html_content.text)
+# Example usage
+github_username = "nottlespike"
+url = f"https://github.com/{github_username}"
 
+html_content = get_html_content(url)
 
-collaborator_urls = extract_collaborator_urls(html_content.text)
-for url in collaborator_urls:
-    print(f"https://github.com{url}")
+if html_content:
+    result = scrape_github_profile(html_content)
+    if result:
+        print(f"Scraped information for {github_username}:")
+        for key, value in result.items():
+            print(f"{key.capitalize()}: {value}")
+    else:
+        print("No vcard-details found in the provided HTML.")
+else:
+    print("Failed to fetch HTML content.")
