@@ -41,7 +41,7 @@ from typing import Dict, List
 import uvicorn
 
 # Import necessary functions
-from loop import fetch_candidates_and_scores
+from loop import calculate_repo_score, fetch_candidates_and_scores
 
 app = FastAPI()
 
@@ -66,11 +66,13 @@ async def get_scores(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/repo")
-async def get_repo_info(request: RepoRequest):
+async def get_repo_info(
+    github_repo_link: str = Query(..., description="The GitHub repo link")
+):
     try:
         # Analyze the specified repo
-        repo_info = "REPO_SUMMARY TEST"
-        return repo_info
+        repo_score = calculate_repo_score(github_repo_link)
+        return {"score": repo_score}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

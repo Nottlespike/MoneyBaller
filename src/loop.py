@@ -173,6 +173,11 @@ def run_bfs_scraping(seed_github_link: str, num_candidates: int=10) -> Dict[str,
 
 
 @cache
+def calculate_repo_score(github_repo_url: str):
+    return 6 + (hash(github_repo_url) % 4)
+
+
+@cache
 def fetch_candidates_and_scores(seed_github_link: str, num_candidates: int=10) -> Dict[str, Tuple[int, Any]]:
     # Run BFS scraping to get contributors and their repos
     all_profiles = run_bfs_scraping(seed_github_link, num_candidates)
@@ -182,7 +187,7 @@ def fetch_candidates_and_scores(seed_github_link: str, num_candidates: int=10) -
         repo_scores = {}
         for repo in repos:
             # Analyze each repo
-            repo_summary = "REPO_SUMMARY TEST"
+            repo_summary = calculate_repo_score(repo['html_url'])
             repo_scores[repo['full_name']] = repo_summary
         scores[profile_url] = repo_scores
 
