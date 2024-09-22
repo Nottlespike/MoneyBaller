@@ -14,12 +14,12 @@ def main():
     try:
         # Load environment variables
         load_dotenv()
-       
+
         github_token = os.getenv('GITHUB_TOKEN')
         if not github_token:
             raise ValueError("GitHub token not found. Set GITHUB_TOKEN env var.")
 
-        # Create configuration
+        # Create configuration (hard-coded)
         search_config = SearchConfig(
             repo_config=RepoConfig(
                 min_language_percentage=60.0,
