@@ -303,7 +303,7 @@ if __name__ == '__main__':
                     code_quality_analyze, 
                     repo_path,
                     importance_result
-                ): repo 
+                ): repo.html_url 
                 for repo in repos
             }
             
@@ -314,7 +314,7 @@ if __name__ == '__main__':
                     results[repo] = {
                         "average_score": avg_score,
                         "analysis_rate": analysis_rate,
-                        "repo_url": repo.html_url,
+                        "repo_url": repo,
                         'user_url' : user.html_url,
                         'summary': summary
                     }
