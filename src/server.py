@@ -58,7 +58,7 @@ async def get_scores(request: ScoresRequest):
         # Run BFS scraping to get contributors and their repos
         scores = fetch_candidates_and_scores(request.seed_github_link, request.num_candidates)
 
-        return {"scores": scores}
+        return scores
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

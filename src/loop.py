@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 
+from functools import cache
 import queue
 import requests
 import re
@@ -171,6 +172,7 @@ def run_bfs_scraping(seed_github_link: str, num_candidates: int=10) -> Dict[str,
     return all_profiles
 
 
+@cache
 def fetch_candidates_and_scores(seed_github_link: str, num_candidates: int=10) -> Dict[str, Tuple[int, Any]]:
     # Run BFS scraping to get contributors and their repos
     all_profiles = run_bfs_scraping(seed_github_link, num_candidates)
